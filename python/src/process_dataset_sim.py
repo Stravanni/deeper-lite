@@ -188,6 +188,23 @@ def convert_csv_to_features(dataset_name, input_file_name):
         dataset_to_matrix(folder_path, input_file_name, ltable_file_name, rtable_file_name)
     return np.load(file_path)
 
+def convert_csv_to_features(dataset_name, input_file_name, dataset_config):
+    dataset = dataset_config[dataset_name]
+    folder_path = dataset["dataset_folder_path"]
+    ltable_file_name = dataset["ltable_file_name"]
+    rtable_file_name = dataset["rtable_file_name"]
+
+    feature_file_name = input_file_name.replace(".csv", ".npy")
+
+    #Check if the npy file already exists
+    file_path = os.path.join(folder_path, feature_file_name)
+    if os.path.exists(file_path):
+        print "File {} already exists. Reusing it.".format(feature_file_name)
+    else:
+        print "File {} does not exist. Creating and persisting it.".format(feature_file_name)
+        dataset_to_matrix(folder_path, input_file_name, ltable_file_name, rtable_file_name)
+    return np.load(file_path)
+
 def get_features_and_labels(dataset_name, file_name):
     matrix = convert_csv_to_features(dataset_name, file_name)
     features, labels = matrix[:, :-1], matrix[:, -1]
@@ -195,6 +212,24 @@ def get_features_and_labels(dataset_name, file_name):
     #Convert to torch format from numpy format
     features, labels = torch.from_numpy(features), torch.from_numpy(labels).type(torch.LongTensor)
     return features, labels
+
+def get_features_and_labels(dataset_name, file_name, dataset_config):
+    matrix = convert_csv_to_features(dataset_name, file_name, dataset_config)
+    features, labels = matrix[:, :-1], matrix[:, -1]
+
+    #Convert to torch format from numpy format
+    features, labels = torch.from_numpy(features), torch.from_numpy(labels).type(torch.LongTensor)
+    return features, labels
+
+# @author gio
+# when Ground Truth is not available
+def get_features_only(dataset_name, file_name, dataset_config):
+    matrix = convert_csv_to_features(dataset_name, file_name, dataset_config)
+    features= matrix[:, :-1]
+
+    # Convert to torch format from numpy format
+    features = torch.from_numpy(features)
+    return features
 
 
 #Function to efficiently remove common punctuation and stopwords
@@ -211,6 +246,12 @@ def get_folder_to_persist_model(dataset_name):
     dataset = configs.er_dataset_details[dataset_name]
     folder = dataset["dataset_folder_path"]
     return folder
+
+def get_folder_to_persist_model(dataset_name, dataset_configs):
+    dataset = dataset_configs[dataset_name]
+    folder = dataset["dataset_folder_path"]
+    return folder
+
 
 #Sample code to create training, validation and testing files
 #Change the parameters below as necessary
