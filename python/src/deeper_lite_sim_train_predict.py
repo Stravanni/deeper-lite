@@ -178,7 +178,7 @@ def executeServiceTrain(params={}):
     #     split_ratio = params["split_ratio"]
 
     folder_path = params[dataset_name]["dataset_folder_path"]
-    candset_ids_file_name = "labeled_ids_only.csv"
+    candset_ids_file_name = params[dataset_name]["labeled_file"]  # "labeled_ids_only.csv"
     split_dataset_by_ratio(folder_path,
                            candset_ids_file_name,
                            split_ratio=split_ratio,
@@ -247,7 +247,7 @@ def executeServicePredict(params={}):
 
     # predict_file_name, predict_output_file_name
     predict(dataset_name,
-            "predict.csv",  # this file has to be provided (before: test.csv)
+            params[dataset_name]["candidates_file"],  # this file has to be provided (before: test.csv)
             "test_predictions.csv",  # output file
             get_deeper_lite_model_sim)
 
@@ -260,21 +260,49 @@ def executeServicePredict(params={}):
 
     df_matches = df_pred[df_pred.gold == 1]
 
-    df_a['cluster_id'] = df_a.id
-    df_b['cluster_id'] = df_b.id
+    df_a['cluster_id'] = 0
+    df_b['cluster_id'] = 0
 
     G = nx.Graph()
-    G.add_edges_from(df_matches[["ltable_id", "rtable_id"]].values)
 
-    cluster = -1
-    cc = 0
-    for component in nx.connected_components(G):
-        cluster += 1
-        for c in component:
-            if c in id1:
-                df_a.loc[df_a.id == c, 'cluster_id'] = cluster
+    ids_a = list(df_matches["ltable_id"].values)
+    ids_b = list(df_matches["rtable_id"].values)
+
+    limit_dataset_a = max(ids_a) + 1
+    ids_b = list(map(lambda x: x + limit_dataset_a, ids_b))
+
+    ids_zip = list(zip(ids_a, ids_b))
+
+    for edge in ids_zip:
+        G.add_edge(edge[0], edge[1])
+
+    cluster_id = 1
+    components = nx.connected_components(G)
+    for comp in components:
+        # cluster_matches.add(cluster_id)
+        for el in comp:
+            if (el < limit_dataset_a):
+                df_a.loc[df_a.id == el, "cluster_id"] = cluster_id
             else:
-                df_b.loc[df_b.id == c, 'cluster_id'] = cluster
+                df_b.loc[df_b.id == int(el - limit_dataset_a), "cluster_id"] = cluster_id
+        cluster_id += 1
+
+    # for m in matches_list:
+    #     dfa.loc[dfa.id==m[0], "cluster_id"]=cluster_id
+    #     dfb.loc[dfb.id==m[1], "cluster_id"]=cluster_id
+    #     cluster_id += 1
+
+    clusters = []
+    for i in range(0, len(df_a.loc[df_a.cluster_id == 0])):
+        clusters.append(cluster_id)
+        cluster_id += 1
+    df_a.loc[df_a.cluster_id == 0, "cluster_id"] = clusters
+
+    clusters = []
+    for i in range(0, len(df_b.loc[df_b.cluster_id == 0])):
+        clusters.append(cluster_id)
+        cluster_id += 1
+    df_b.loc[df_b.cluster_id == 0, "cluster_id"] = clusters
 
     if not os.path.exists(params["out_file_path"]):
         os.makedirs(params["out_file_path"])
@@ -303,8 +331,8 @@ if __name__ == "__main__":
         "dataset_name": "electronics",
         # "movies": {
         "electronics": {
-            # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite/python/BenchmarkDatasets/movies/",
-            "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite/python/BenchmarkDatasets/electronics/",
+            # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
+            "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/electronics/",
             "ltable_file_name": "dataset_a.csv",
             "rtable_file_name": "dataset_b.csv",
             "blocking_key": {"l": "movie_name", "r": "movie_name"},
@@ -315,24 +343,72 @@ if __name__ == "__main__":
                 # "r": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration']}
                 "r": ['Features', 'Brand', 'Name', 'ID']}
         },
-        # "out_file_path": "/Users/gio/Workspace/DC/deeper-lite/python/BenchmarkDatasets/movies/out2/"
-        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite/python/BenchmarkDatasets/electronics/out2/"
+        # "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
+        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/electronics/out2/"
     }
 
     params = {
         "dataset_name": "movies",
         "movies": {
-            "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite/python/BenchmarkDatasets/movies/",
+            "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
             "ltable_file_name": "dataset_a.csv",
             "rtable_file_name": "dataset_b.csv",
             "blocking_key": {"l": "movie_name", "r": "movie_name"},
             "candidates_file": "predict.csv",
+            "labeled_file": "labeled_ids_only.csv",
             "golden_label_file_name": "",
-            "attribute_list": {"l": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration'],
-                               "r": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration']}
+            "attribute_list": {  # "l": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration'],
+                "l": ['genre', 'actors', 'movie_name', 'directors', 'duration'],
+                "r": ['genre', 'actors', 'movie_name', 'directors', 'duration']}
         },
-        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite/python/BenchmarkDatasets/movies/out2/"
+        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
     }
+
+    # ['title', 'pubmonth', 'pubday', 'id', 'edition', 'publisher', 'isbn13', 'language', 'pubyear', 'series', 'authors','pages']
+
+    # params = {
+    #     # "dataset_name": "movies",
+    #     "dataset_name": "book1",
+    #     # "movies": {
+    #     "book1": {
+    #         # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
+    #         "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book1/",
+    #         "ltable_file_name": "dataset_a.csv",
+    #         "rtable_file_name": "dataset_b.csv",
+    #         "blocking_key": {"l": "title", "r": "title"},
+    #         "labeled_file": "labeled_ids_only.csv",
+    #         "candidates_file": "predict.csv",
+    #         "golden_label_file_name": "",
+    #         "attribute_list": {  # "l": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration'],
+    #             "l": ['title', 'pubmonth', 'pubday', 'id', 'edition', 'publisher', 'isbn13', 'language', 'pubyear', 'series', 'authors','pages'],
+    #             # "r": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration']}
+    #             "r": ['title', 'pubmonth', 'pubday', 'id', 'edition', 'publisher', 'isbn13', 'language', 'pubyear', 'series', 'authors','pages']}
+    #     },
+    #     # "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
+    #     "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book1/out2/"
+    # }
+
+    # params = {
+    #     # "dataset_name": "movies",
+    #     "dataset_name": "book2",
+    #     # "movies": {
+    #     "book2": {
+    #         # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
+    #         "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book2/",
+    #         "ltable_file_name": "dataset_a.csv",
+    #         "rtable_file_name": "dataset_b.csv",
+    #         "blocking_key": {"l": "title", "r": "title"},
+    #         "labeled_file": "labeled_ids_only.csv",
+    #         "candidates_file": "predict.csv",
+    #         "golden_label_file_name": "",
+    #         "attribute_list": {  # "l": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration'],
+    #             "l": ['Author3', 'Publisher', 'Title', 'ISBN13', 'Author1', 'ID', 'Author2'],
+    #             # "r": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration']}
+    #             "r": ['Author3', 'Publisher', 'Title', 'ISBN13', 'Author1', 'ID', 'Author2']}
+    #     },
+    #     # "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
+    #     "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book2/out2/"
+    # }
 
     dataset_config[params["dataset_name"]] = {}
     dataset_config[params["dataset_name"]]["dataset_folder_path"] = params[params["dataset_name"]][
