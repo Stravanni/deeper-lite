@@ -31,8 +31,6 @@ RANDOM_STATE = 12345
 HIDDEN_X = 2
 MODEL_FILE_NAME = "best_validation_model_params.torch"
 
-dataset_config = {}
-
 
 def get_deeper_lite_model_sim(num_attributes):
     # If there are K input attributes, Deeper Lite  has 2K features : 1 each for cosine distance and normed abs distance
@@ -51,11 +49,12 @@ def get_deeper_lite_model_sim(num_attributes):
 
 
 # Assumes that the train and validation files are in the same folder as dataset_name
-def train(dataset_name, train_file_name, validation_file_name, model_fn):
-    train_features, train_labels = process_dataset.get_features_and_labels(dataset_name, train_file_name,
-                                                                           dataset_config)
-    validation_features, validation_labels = process_dataset.get_features_and_labels(dataset_name, validation_file_name,
-                                                                                     dataset_config)
+def train(params,
+          train_file_name,
+          validation_file_name,
+          model_fn):
+    train_features, train_labels = process_dataset.get_features_and_labels(params, train_file_name)
+    validation_features, validation_labels = process_dataset.get_features_and_labels(params, validation_file_name)
 
     # Hack: Assumes that for deeper lite num_features = 2 * num_attributes
     num_attributes = train_features.shape[1] / 2
@@ -75,7 +74,7 @@ def train(dataset_name, train_file_name, validation_file_name, model_fn):
 
     best_validation_f1_score = 0.0
     best_model_so_far = None
-    model_file_name_path = os.path.join(process_dataset.get_folder_to_persist_model(dataset_name, dataset_config),
+    model_file_name_path = os.path.join(process_dataset.get_folder_to_persist_model(params),
                                         MODEL_FILE_NAME)
 
     for epoch in range(MAX_EPOCHS):
@@ -99,37 +98,42 @@ def train(dataset_name, train_file_name, validation_file_name, model_fn):
     return best_model_so_far
 
 
-def test(dataset_name, test_file_name, test_output_file_name, model_fn):
-    test_features, test_labels = process_dataset.get_features_and_labels(dataset_name, test_file_name)
+# def test(test_file_name,
+#          test_output_file_name,
+#          model_fn):
+#     test_features, test_labels = process_dataset.get_features_and_labels(params, test_file_name)
+#     # Hack: Assumes that for deeper lite num_features = 2 * num_attributes
+#     num_attributes = test_features.shape[1] / 2
+#     model = model_fn(num_attributes)
+#
+#     folder_path = process_dataset.get_folder_to_persist_model(params)
+#     model_file_name_path = os.path.join(folder_path, MODEL_FILE_NAME)
+#     model.load_state_dict(torch.load(model_file_name_path))
+#     model.eval()
+#
+#     predictions = model(test_features)
+#     # Uncomment the following lines to get the score
+#     # testing_f1_score = compute_scores(predictions, test_labels
+#     # print "Testing F1 ", testing_f1_score
+#
+#     prediction_as_numpy = torch.max(predictions, 1)[1].data.numpy()
+#
+#     # Store output
+#     test_df = pd.read_csv(os.path.join(folder_path, test_file_name), encoding="utf-8")
+#     test_df["gold"] = prediction_as_numpy
+#     test_df.to_csv(os.path.join(folder_path, test_output_file_name), encoding="utf8", index=False)
+
+
+def predict(params,
+            predict_file_name,
+            predict_output_file_name,
+            model_fn):
+    test_features = process_dataset.get_features_only(params, predict_file_name)
     # Hack: Assumes that for deeper lite num_features = 2 * num_attributes
     num_attributes = test_features.shape[1] / 2
     model = model_fn(num_attributes)
 
-    folder_path = process_dataset.get_folder_to_persist_model(dataset_name)
-    model_file_name_path = os.path.join(folder_path, MODEL_FILE_NAME)
-    model.load_state_dict(torch.load(model_file_name_path))
-    model.eval()
-
-    predictions = model(test_features)
-    # Uncomment the following lines to get the score
-    # testing_f1_score = compute_scores(predictions, test_labels
-    # print "Testing F1 ", testing_f1_score
-
-    prediction_as_numpy = torch.max(predictions, 1)[1].data.numpy()
-
-    # Store output
-    test_df = pd.read_csv(os.path.join(folder_path, test_file_name), encoding="utf-8")
-    test_df["gold"] = prediction_as_numpy
-    test_df.to_csv(os.path.join(folder_path, test_output_file_name), encoding="utf8", index=False)
-
-
-def predict(dataset_name, predict_file_name, predict_output_file_name, model_fn):
-    test_features = process_dataset.get_features_only(dataset_name, predict_file_name, dataset_config)
-    # Hack: Assumes that for deeper lite num_features = 2 * num_attributes
-    num_attributes = test_features.shape[1] / 2
-    model = model_fn(num_attributes)
-
-    folder_path = process_dataset.get_folder_to_persist_model(dataset_name, dataset_config)
+    folder_path = process_dataset.get_folder_to_persist_model(params)
     model_file_name_path = os.path.join(folder_path, MODEL_FILE_NAME)
     model.load_state_dict(torch.load(model_file_name_path))
     model.eval()
@@ -169,16 +173,14 @@ Required input:
 
 
 def executeServiceTrain(params={}):
-    dataset_name = params["dataset_name"]
-
     # split_ratio = [0.7, 0.3, 0.0]
     # no test, only train and validation
     split_ratio = [0.8, 0.2, 0.0]
     # if params["split_ratio"] is not "":
     #     split_ratio = params["split_ratio"]
 
-    folder_path = params[dataset_name]["dataset_folder_path"]
-    candset_ids_file_name = params[dataset_name]["labeled_file"]  # "labeled_ids_only.csv"
+    folder_path = params["dataset_folder_path"]
+    candset_ids_file_name = params["labeled_file"]  # "labeled_ids_only.csv"
     split_dataset_by_ratio(folder_path,
                            candset_ids_file_name,
                            split_ratio=split_ratio,
@@ -188,7 +190,7 @@ def executeServiceTrain(params={}):
                            validation_file_name="validation.csv",
                            test_file_name="test.csv")  # test should be empty
 
-    train(dataset_name,
+    train(params,
           "train.csv",
           "validation.csv",
           get_deeper_lite_model_sim)
@@ -205,18 +207,16 @@ Optional:
 
 
 def executeServicePredict(params={}):
-    dataset_name = params["dataset_name"]
-
     #
     # This is a default blocking. (overlap blocking from Magellan, a.k.a. Standard Blocking)
     # Please refer to the documentation of DeepER (and Magellan) for custom blocking
     # blocking generates the file "predict.csv"
     #
     #
-    l_file_name = params[dataset_name]["dataset_folder_path"] + params[dataset_name]["ltable_file_name"]
-    r_file_name = params[dataset_name]["dataset_folder_path"] + params[dataset_name]["rtable_file_name"]
+    l_file_name = params["dataset_folder_path"] + params["ltable_file_name"]
+    r_file_name = params["dataset_folder_path"] + params["rtable_file_name"]
 
-    generateCandidates = True if params[dataset_name]["candidates_file"] is "" else False
+    generateCandidates = True if params["candidates_file"] is "" else False
 
     if generateCandidates:
         A = py_entitymatching.read_csv_metadata(l_file_name, key="id", encoding='utf-8')
@@ -225,16 +225,16 @@ def executeServicePredict(params={}):
         ob = py_entitymatching.OverlapBlocker()
         # No misses
         candset_df = ob.block_tables(A, B,
-                                     params[dataset_name]["blocking_key"]["l"],
-                                     params[dataset_name]["blocking_key"]["r"],
-                                     l_output_attrs=params[dataset_name]["attribute_list"]["l"],
-                                     r_output_attrs=params[dataset_name]["attribute_list"]["r"],
+                                     params["lblocking_key"],
+                                     params["rblocking_key"],
+                                     l_output_attrs=params["lattributes"],
+                                     r_output_attrs=params["rattributes"],
                                      overlap_size=1,
                                      show_progress=False)
 
-        blocking_utils.save_candset_compressed(dataset_name, candset_df, "candset.pkl.compress")
+        blocking_utils.save_candset_compressed(params, candset_df, "candset.pkl.compress")
 
-        folder_path = process_dataset.get_folder_to_persist_model(dataset_name, dataset_config)
+        folder_path = process_dataset.get_folder_to_persist_model(params)
 
         candset_df["gold"] = 0
         candset_df_id_oly = candset_df[["ltable_id", "rtable_id", "gold"]]
@@ -246,14 +246,14 @@ def executeServicePredict(params={}):
                                  )
 
     # predict_file_name, predict_output_file_name
-    predict(dataset_name,
-            params[dataset_name]["candidates_file"],  # this file has to be provided (before: test.csv)
+    predict(params,
+            params["candidates_file"],  # this file has to be provided (before: test.csv)
             "test_predictions.csv",  # output file
             get_deeper_lite_model_sim)
 
     df_a = pd.read_csv(l_file_name, encoding='utf8')
     df_b = pd.read_csv(r_file_name, encoding='utf8')
-    df_pred = pd.read_csv(params[dataset_name]["dataset_folder_path"] + "labeled_ids_only.csv", encoding='utf8')
+    df_pred = pd.read_csv(params["dataset_folder_path"] + "labeled_ids_only.csv", encoding='utf8')
 
     id1 = set(df_a.id)
     id2 = set(df_b.id)
@@ -307,8 +307,8 @@ def executeServicePredict(params={}):
     if not os.path.exists(params["out_file_path"]):
         os.makedirs(params["out_file_path"])
 
-    file_out_path_a = params["out_file_path"] + params[dataset_name]["ltable_file_name"]
-    file_out_path_b = params["out_file_path"] + params[dataset_name]["rtable_file_name"]
+    file_out_path_a = params["out_file_path"] + params["ltable_file_name"]
+    file_out_path_b = params["out_file_path"] + params["rtable_file_name"]
 
     df_a.to_csv(file_out_path_a,
                 sep=',', index=False,
@@ -327,48 +327,39 @@ def executeServicePredict(params={}):
 
 if __name__ == "__main__":
     params = {
-        # "dataset_name": "movies",
-        "dataset_name": "electronics",
-        # "movies": {
-        "electronics": {
-            # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
-            "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/electronics/",
-            "ltable_file_name": "dataset_a.csv",
-            "rtable_file_name": "dataset_b.csv",
-            "blocking_key": {"l": "movie_name", "r": "movie_name"},
-            "candidates_file": "predict.csv",
-            "golden_label_file_name": "",
-            "attribute_list": {  # "l": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration'],
-                "l": ['Features', 'Brand', 'Name', 'ID'],
-                # "r": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration']}
-                "r": ['Features', 'Brand', 'Name', 'ID']}
-        },
-        # "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
-        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/electronics/out2/"
+        "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
+        "ltable_file_name": "dataset_a.csv",
+        "rtable_file_name": "dataset_b.csv",
+        "candidates_file": "predict.csv",
+        "labeled_file": "labeled_ids_only.csv",
+        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/",
+        "lblocking_key": "movie_name",
+        "rblocking_key": "movie_name",
+        "lattributes": ['genre', 'actors', 'movie_name', 'directors', 'duration'],
+        "rattributes": ['genre', 'actors', 'movie_name', 'directors', 'duration']
     }
 
-    params = {
-        "dataset_name": "movies",
-        "movies": {
-            "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
-            "ltable_file_name": "dataset_a.csv",
-            "rtable_file_name": "dataset_b.csv",
-            "blocking_key": {"l": "movie_name", "r": "movie_name"},
-            "candidates_file": "predict.csv",
-            "labeled_file": "labeled_ids_only.csv",
-            "golden_label_file_name": "",
-            "attribute_list": {  # "l": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration'],
-                "l": ['genre', 'actors', 'movie_name', 'directors', 'duration'],
-                "r": ['genre', 'actors', 'movie_name', 'directors', 'duration']}
-        },
+    paramsTrain = {
+        "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
+        "ltable_file_name": "dataset_a.csv",
+        "rtable_file_name": "dataset_b.csv",
+        "labeled_file": "labeled_ids_only.csv",
+        "lblocking_key": "", # optional
+        "rblocking_key": "", # optional
+    }
+
+    paramsPredict = {
+        "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
+        "ltable_file_name": "dataset_a.csv",
+        "rtable_file_name": "dataset_b.csv",
+        "candidates_file": "predict.csv",
         "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
     }
 
-    # ['title', 'pubmonth', 'pubday', 'id', 'edition', 'publisher', 'isbn13', 'language', 'pubyear', 'series', 'authors','pages']
+    executeServiceTrain(paramsTrain)
+    executeServicePredict(paramsPredict)
 
     # params = {
-    #     # "dataset_name": "movies",
-    #     "dataset_name": "book1",
     #     # "movies": {
     #     "book1": {
     #         # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
@@ -389,8 +380,6 @@ if __name__ == "__main__":
     # }
 
     # params = {
-    #     # "dataset_name": "movies",
-    #     "dataset_name": "book2",
     #     # "movies": {
     #     "book2": {
     #         # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
@@ -410,26 +399,6 @@ if __name__ == "__main__":
     #     "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book2/out2/"
     # }
 
-    dataset_config[params["dataset_name"]] = {}
-    dataset_config[params["dataset_name"]]["dataset_folder_path"] = params[params["dataset_name"]][
-        "dataset_folder_path"]
-    dataset_config[params["dataset_name"]]["ltable_file_name"] = params[params["dataset_name"]]["ltable_file_name"]
-    dataset_config[params["dataset_name"]]["rtable_file_name"] = params[params["dataset_name"]]["rtable_file_name"]
-    dataset_config[params["dataset_name"]]["golden_label_file_name"] = params[params["dataset_name"]][
-        "golden_label_file_name"]
-
     # executeService(params)
-    executeServiceTrain(params)
-    executeServicePredict(params)
-
-    # train("Fodors_Zagat", "train.csv", "validation.csv", get_deeper_lite_model_sim)
-    # test("Fodors_Zagat", "test.csv", "test_predictions.csv", get_deeper_lite_model_sim)
-    #
-    # train("Cora", "train.csv", "validation.csv", get_deeper_lite_model_sim)
-    # test("Cora", "test.csv", "test_predictions.csv", get_deeper_lite_model_sim)
-    #
-    # train("DBLP_ACM", "train.csv", "validation.csv", get_deeper_lite_model_sim)
-    # test("DBLP_ACM", "test.csv", "test_predictions.csv", get_deeper_lite_model_sim)
-    #
-    # train("DBLP_Scholar", "train.csv", "validation.csv", get_deeper_lite_model_sim)
-    # test("DBLP_Scholar", "test.csv", "test_predictions.csv", get_deeper_lite_model_sim)
+    # executeServiceTrain(params)
+    # executeServicePredict(params)

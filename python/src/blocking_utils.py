@@ -47,9 +47,9 @@ def save_candset_ids_only(dataset_name, candset_df):
     output_file_name = dataset_dtls["dataset_folder_path"] + configs.CANDSET_IDS_FILE_NAME
     candset_df[ ['ltable_id', 'rtable_id', 'gold'] ].to_csv(output_file_name, index=False)
 
-def save_candset_compressed(dataset_name, candset_df, file_name):
-    dataset_dtls = configs.er_dataset_details[dataset_name]
-    output_file_name = dataset_dtls["dataset_folder_path"] + file_name
+def save_candset_compressed(params, candset_df, file_name):
+
+    output_file_name = params["dataset_folder_path"] + file_name
     candset_df.to_pickle(output_file_name, compression="gzip")
 
 #This function takes the dataset name and block_fn is a function pointer for each dataset used for its blocking
