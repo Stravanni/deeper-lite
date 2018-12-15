@@ -1,24 +1,27 @@
 # GiG.
 
+# Add local directory to path to allow imports when invoked directly or as part of Data Civilizer
+import os
+import sys
+sys.path.append(os.path.realpath(os.path.dirname(__file__)))
+
 import torch
 import torch.nn as nn
 import torch.utils.data as Data
 import torch.optim as optim
 
 from sklearn.metrics import f1_score
-import os
 import random
 import numpy as np
 import pandas as pd
 
 import py_entitymatching
+import blocking_utils
 from process_dataset_sim import split_dataset_by_ratio
 import networkx as nx
 import csv
 
 import process_dataset_sim as process_dataset
-
-# import configs
 
 # DL Specific configs
 BATCH_SIZE = 16
@@ -61,7 +64,7 @@ def train(params,
     validation_features, validation_labels = process_dataset.get_features_and_labels(params, validation_file_name)
 
     # Hack: Assumes that for deeper lite num_features = 2 * num_attributes
-    num_attributes = train_features.shape[1] / 2
+    num_attributes = int(train_features.shape[1] / 2)
     model = model_fn(num_attributes)
 
     train_dataset = Data.TensorDataset(train_features, train_labels)
@@ -102,30 +105,7 @@ def train(params,
     return best_model_so_far
 
 
-# def test(test_file_name,
-#          test_output_file_name,
-#          model_fn):
-#     test_features, test_labels = process_dataset.get_features_and_labels(params, test_file_name)
-#     # Hack: Assumes that for deeper lite num_features = 2 * num_attributes
-#     num_attributes = test_features.shape[1] / 2
-#     model = model_fn(num_attributes)
-#
-#     folder_path = process_dataset.get_folder_to_persist_model(params)
-#     model_file_name_path = os.path.join(folder_path, MODEL_FILE_NAME)
-#     model.load_state_dict(torch.load(model_file_name_path))
-#     model.eval()
-#
-#     predictions = model(test_features)
-#     # Uncomment the following lines to get the score
-#     # testing_f1_score = compute_scores(predictions, test_labels
-#     # print "Testing F1 ", testing_f1_score
-#
-#     prediction_as_numpy = torch.max(predictions, 1)[1].data.numpy()
-#
-#     # Store output
-#     test_df = pd.read_csv(os.path.join(folder_path, test_file_name), encoding="utf-8")
-#     test_df["gold"] = prediction_as_numpy
-#     test_df.to_csv(os.path.join(folder_path, test_output_file_name), encoding="utf8", index=False)
+
 
 
 def predict(params,
@@ -134,7 +114,7 @@ def predict(params,
             model_fn):
     test_features = process_dataset.get_features_only(params, predict_file_name)
     # Hack: Assumes that for deeper lite num_features = 2 * num_attributes
-    num_attributes = test_features.shape[1] / 2
+    num_attributes = int(test_features.shape[1] / 2)
     model = model_fn(num_attributes)
 
     folder_path = process_dataset.get_folder_to_persist_model(params)
@@ -153,6 +133,8 @@ def predict(params,
     test_df = pd.read_csv(os.path.join(folder_path, predict_file_name), encoding="utf-8")
     test_df["gold"] = prediction_as_numpy
     test_df.to_csv(os.path.join(folder_path, predict_output_file_name), encoding="utf8", index=False)
+
+
 
 
 def compute_scores(predicted, actual):
@@ -209,7 +191,6 @@ Optional:
 - predict.csv (candidates pairs generated with blocking)
 '''
 
-## tmp
 
 def executeServicePredict(params={}):
     #
@@ -221,7 +202,7 @@ def executeServicePredict(params={}):
     l_file_name = params["dataset_folder_path"] + params["ltable_file_name"]
     r_file_name = params["dataset_folder_path"] + params["rtable_file_name"]
 
-    generateCandidates = True  # if params["candidates_file"] is "" else False
+    generateCandidates = False if params["lblocking_key"] is "" else True
 
     if generateCandidates:
         A = py_entitymatching.read_csv_metadata(l_file_name, key="id", encoding='utf-8')
@@ -232,14 +213,12 @@ def executeServicePredict(params={}):
         candset_df = ob.block_tables(A, B,
                                      params["lblocking_key"],
                                      params["rblocking_key"],
-                                     #l_output_attrs=[params["rblocking_key"]],
-                                     # params["lattributes"],
-                                     #r_output_attrs=[params["rblocking_key"]],
-                                     # params["rattributes"],
+                                     # l_output_attrs=params["lattributes"],
+                                     # r_output_attrs=params["rattributes"],
                                      overlap_size=3,
                                      show_progress=False)
 
-        save_candset_compressed(params, candset_df, "candset.pkl.compress")
+        blocking_utils.save_candset_compressed(params, candset_df, "candset.pkl.compress")
 
         folder_path = process_dataset.get_folder_to_persist_model(params)
 
@@ -350,7 +329,7 @@ if __name__ == "__main__":
         "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
         "ltable_file_name": "dataset_a.csv",
         "rtable_file_name": "dataset_b.csv",
-        "labeled_file": "labeled_ids_only.csv"
+        "labeled_file": "labeled_ids_only.csv",
     }
 
     paramsPredict = {
@@ -358,54 +337,22 @@ if __name__ == "__main__":
         "ltable_file_name": "dataset_a.csv",
         "rtable_file_name": "dataset_b.csv",
         "candidates_file": "predict.csv",
-        "lblocking_key": "movie_name",  # optional
-        "rblocking_key": "movie_name",  # optional
+        "lblocking_key": "",  # optional
+        "rblocking_key": "",  # optional
         "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
     }
 
     executeServiceTrain(paramsTrain)
     executeServicePredict(paramsPredict)
 
-    # params = {
-    #     # "movies": {
-    #     "book1": {
-    #         # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
-    #         "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book1/",
-    #         "ltable_file_name": "dataset_a.csv",
-    #         "rtable_file_name": "dataset_b.csv",
-    #         "blocking_key": {"l": "title", "r": "title"},
-    #         "labeled_file": "labeled_ids_only.csv",
-    #         "candidates_file": "predict.csv",
-    #         "golden_label_file_name": "",
-    #         "attribute_list": {  # "l": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration'],
-    #             "l": ['title', 'pubmonth', 'pubday', 'id', 'edition', 'publisher', 'isbn13', 'language', 'pubyear', 'series', 'authors','pages'],
-    #             # "r": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration']}
-    #             "r": ['title', 'pubmonth', 'pubday', 'id', 'edition', 'publisher', 'isbn13', 'language', 'pubyear', 'series', 'authors','pages']}
-    #     },
-    #     # "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
-    #     "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book1/out2/"
-    # }
-
-    # params = {
-    #     # "movies": {
-    #     "book2": {
-    #         # "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
-    #         "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book2/",
-    #         "ltable_file_name": "dataset_a.csv",
-    #         "rtable_file_name": "dataset_b.csv",
-    #         "blocking_key": {"l": "title", "r": "title"},
-    #         "labeled_file": "labeled_ids_only.csv",
-    #         "candidates_file": "predict.csv",
-    #         "golden_label_file_name": "",
-    #         "attribute_list": {  # "l": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration'],
-    #             "l": ['Author3', 'Publisher', 'Title', 'ISBN13', 'Author1', 'ID', 'Author2'],
-    #             # "r": ['genre', 'year', 'actors', 'movie_name', 'directors', 'duration']}
-    #             "r": ['Author3', 'Publisher', 'Title', 'ISBN13', 'Author1', 'ID', 'Author2']}
-    #     },
-    #     # "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
-    #     "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/book2/out2/"
-    # }
-
-    # executeService(params)
-    # executeServiceTrain(params)
-    # executeServicePredict(params)
+    # train("Fodors_Zagat", "train.csv", "validation.csv", get_deeper_lite_model_sim)
+    # test("Fodors_Zagat", "test.csv", "test_predictions.csv", get_deeper_lite_model_sim)
+    #
+    # train("Cora", "train.csv", "validation.csv", get_deeper_lite_model_sim)
+    # test("Cora", "test.csv", "test_predictions.csv", get_deeper_lite_model_sim)
+    #
+    # train("DBLP_ACM", "train.csv", "validation.csv", get_deeper_lite_model_sim)
+    # test("DBLP_ACM", "test.csv", "test_predictions.csv", get_deeper_lite_model_sim)
+    #
+    # train("DBLP_Scholar", "train.csv", "validation.csv", get_deeper_lite_model_sim)
+    # test("DBLP_Scholar", "test.csv", "test_predictions.csv", get_deeper_lite_model_sim)

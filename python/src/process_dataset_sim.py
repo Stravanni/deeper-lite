@@ -71,7 +71,7 @@ def verify_split(df, train_df, validation_df, test_df, split_ratio, label_field_
             num_non_duplicates_df * split_ratio[index])
         actual_duplicates, actual_non_duplicates = num_partition_duplicates, num_partition_non_duplicates
         if actual_duplicates != expected_duplicates or actual_non_duplicates != expected_non_duplicates:
-            print "Mismatch :", expected_duplicates, actual_duplicates, expected_non_duplicates, actual_non_duplicates
+            print("Mismatch :", expected_duplicates, actual_duplicates, expected_non_duplicates, actual_non_duplicates)
 
 
 # Given a set of (ltable_id, rtable_id, gold) triples,
@@ -144,6 +144,10 @@ def compute_distance(fasttext_model, ltable_str, rtable_str):
         ltable_str = unicode(ltable_str)
     if isinstance(rtable_str, basestring) == False:
         rtable_str = unicode(rtable_str)
+    # if isinstance(ltable_str, str) == False:
+    #     ltable_str = str(ltable_str)
+    # if isinstance(rtable_str, str) == False:
+    #     rtable_str = str(rtable_str)
 
     lcol_dr = fasttext_model.get_sentence_vector(ltable_str)
     rcol_dr = fasttext_model.get_sentence_vector(rtable_str)
@@ -193,15 +197,15 @@ def convert_csv_to_features(params,
     # Check if the npy file already exists
     file_path = os.path.join(folder_path, feature_file_name)
     if os.path.exists(file_path):
-        print "File {} already exists. Reusing it.".format(feature_file_name)
+        print("File {} already exists. Reusing it.".format(feature_file_name))
     else:
-        print "File {} does not exist. Creating and persisting it.".format(feature_file_name)
+        print("File {} does not exist. Creating and persisting it.".format(feature_file_name))
         dataset_to_matrix(params, input_file_name)
     return np.load(file_path)
 
 
 def convert_csv_to_features(params,
-                            input_file_name, ):
+                            input_file_name):
     folder_path = params["dataset_folder_path"]
     ltable_file_name = params["ltable_file_name"]
     rtable_file_name = params["rtable_file_name"]
@@ -211,9 +215,9 @@ def convert_csv_to_features(params,
     # Check if the npy file already exists
     file_path = os.path.join(folder_path, feature_file_name)
     if os.path.exists(file_path):
-        print "File {} already exists. Reusing it.".format(feature_file_name)
+        print("File {} already exists. Reusing it.".format(feature_file_name))
     else:
-        print "File {} does not exist. Creating and persisting it.".format(feature_file_name)
+        print("File {} does not exist. Creating and persisting it.".format(feature_file_name))
         dataset_to_matrix(params, input_file_name)
     return np.load(file_path)
 
