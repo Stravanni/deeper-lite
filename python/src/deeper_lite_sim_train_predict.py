@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 
 import py_entitymatching
-import blocking_utils
 from process_dataset_sim import split_dataset_by_ratio
 import networkx as nx
 import csv
@@ -30,6 +29,11 @@ EPSILON = 1e-9
 RANDOM_STATE = 12345
 HIDDEN_X = 2
 MODEL_FILE_NAME = "best_validation_model_params.torch"
+
+def save_candset_compressed(params, candset_df, file_name):
+
+    output_file_name = params["dataset_folder_path"] + file_name
+    candset_df.to_pickle(output_file_name, compression="gzip")
 
 
 def get_deeper_lite_model_sim(num_attributes):
@@ -235,7 +239,7 @@ def executeServicePredict(params={}):
                                      overlap_size=3,
                                      show_progress=False)
 
-        blocking_utils.save_candset_compressed(params, candset_df, "candset.pkl.compress")
+        save_candset_compressed(params, candset_df, "candset.pkl.compress")
 
         folder_path = process_dataset.get_folder_to_persist_model(params)
 

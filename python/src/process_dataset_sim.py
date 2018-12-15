@@ -2,9 +2,6 @@
 
 # This file mostly utility functions to process dataset files to the expected data format
 
-# import configs
-import blocking_utils
-
 import csv
 import os
 import pandas as pd
