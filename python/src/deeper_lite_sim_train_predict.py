@@ -118,6 +118,9 @@ def predict(metadata_path,
             rtable_file_path,
             predict_file_path,  # predict_file_name,
             model_fn):
+    # if no predict.csv is passed as param, this should be retrieved from the metadata path
+    if predict_file_path is "":
+        predict_file_path = metadata_path + "predict.csv"
     test_features = process_dataset.get_features_only(metadata_path,
                                                       ltable_file_path,
                                                       rtable_file_path,
@@ -242,7 +245,11 @@ def executeServicePredict(params={}):
 
     df_a = pd.read_csv(l_file_name, encoding='utf8')
     df_b = pd.read_csv(r_file_name, encoding='utf8')
-    df_pred = pd.read_csv(params["metadata_path"] + "labeled_ids_only.csv", encoding='utf8')
+
+    if params["candidates_file_path"] is "":
+        df_pred = pd.read_csv(params['metadata_path'] + "predict.csv", encoding='utf8')
+    else:
+        df_pred = pd.read_csv(params["candidates_file_path"], encoding='utf8')
 
     id1 = set(df_a.id)
     id2 = set(df_b.id)
@@ -316,20 +323,21 @@ def executeServicePredict(params={}):
 
 if __name__ == "__main__":
     paramsTrain = {
-        "metadata_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
-        "ltable_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/dataset_a.csv",
-        "rtable_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/dataset_b.csv",
+        "metadata_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/test/tmp/",
+        "ltable_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/test/in/dataset_a.csv",
+        "rtable_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/test/in/dataset_b.csv",
         "labeled_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/labeled_ids_only.csv",
     }
 
     paramsPredict = {
-        "metadata_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
-        "ltable_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/dataset_a.csv",
-        "rtable_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/dataset_b.csv",
+        "metadata_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/test/tmp/",
+        "ltable_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/test/in/dataset_a.csv",
+        "rtable_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/test/in/dataset_b.csv",
+        # "candidates_file_path": "",
         "candidates_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/predict.csv",
         "lblocking_key": "movie_name",  # optional
         "rblocking_key": "movie_name",  # optional
-        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
+        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/test/out/"
     }
 
     executeServiceTrain(paramsTrain)

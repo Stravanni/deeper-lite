@@ -184,6 +184,7 @@ def convert_csv_to_features(metadata_path,
                             ltable_file_path,
                             rtable_file_path,
                             predict_file_path):
+
     feature_file_name = predict_file_path.split("/")[-1].replace(".csv", ".npy")
 
     # Check if the npy file already exists
