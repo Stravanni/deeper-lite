@@ -2,12 +2,10 @@
 
 # This file mostly utility functions to process dataset files to the expected data format
 
-import csv
 import os
 import pandas as pd
 import numpy as np
 
-from nltk.corpus import stopwords
 import fastText
 from scipy.spatial.distance import cosine
 import torch
@@ -20,18 +18,24 @@ FASTTEXT_MODEL_PATH = "/Users/gio/data/wiki_en_fasttext/wiki.en.bin"
 # conservatively, the split is done in a stratified manner by manually splitting data into duplicates and non duplicates
 # this is relevant when we test very small number of training data
 
-def split_dataset_by_ratio(folder_path, candset_ids_file_name, split_ratio=[0.3, 0.2, 0.5], label_field_name='gold',
-                           random_state=12345, train_file_name="train.csv", validation_file_name="validation.csv",
+def split_dataset_by_ratio(metadata_path,#folder_path,
+                           candset_ids_file_path,#candset_ids_file_name,
+                           split_ratio,
+                           label_field_name='gold',
+                           random_state=12345,
+                           train_file_name="train.csv",
+                           validation_file_name="validation.csv",
                            test_file_name="test.csv"):
-    df = pd.read_csv(os.path.join(folder_path, candset_ids_file_name), encoding="utf-8")
+
+    df = pd.read_csv(candset_ids_file_path, encoding="utf-8")
     duplicates_df = df[df[label_field_name] == 1]
     non_duplicates_df = df[df[label_field_name] == 0]
 
     train_duplicates, validation_duplicates, test_duplicates = local_train_validate_test_split(duplicates_df,
                                                                                                split_ratio,
                                                                                                random_state)
-    train_non_duplicates, validation_non_duplicates, test_non_duplicates = local_train_validate_test_split(
-        non_duplicates_df, split_ratio, random_state)
+    train_non_duplicates, validation_non_duplicates, test_non_duplicates = \
+        local_train_validate_test_split(non_duplicates_df, split_ratio, random_state)
 
     # The last sample is to shuffle the data so that duplicates and non_duplicates mix
     train_df = pd.concat([train_duplicates, train_non_duplicates]).sample(frac=1)
@@ -39,12 +43,15 @@ def split_dataset_by_ratio(folder_path, candset_ids_file_name, split_ratio=[0.3,
     test_df = pd.concat([test_duplicates, test_non_duplicates]).sample(frac=1)
 
     # verify_split(df, train_df, validation_df, test_df, split_ratio, label_field_name)
-    for partition_df, file_name in [(train_df, train_file_name), (validation_df, validation_file_name),
+    for partition_df, file_name in [(train_df, train_file_name),
+                                    (validation_df, validation_file_name),
                                     (test_df, test_file_name)]:
-        partition_df.to_csv(os.path.join(folder_path, file_name), encoding="utf-8", index=False)
+        partition_df.to_csv(os.path.join(metadata_path, file_name), encoding="utf-8", index=False)
 
 
-def local_train_validate_test_split(df, split_ratio=[0.3, 0.2, 0.5], random_state=12345):
+def local_train_validate_test_split(df,
+                                    split_ratio=[0.3, 0.2, 0.5],
+                                    random_state=12345):
     np.random.seed(random_state)
     random_shuffle = np.random.permutation(df.index)
     num_tuples = len(df)
@@ -60,7 +67,11 @@ def local_train_validate_test_split(df, split_ratio=[0.3, 0.2, 0.5], random_stat
 
 
 # Trivial manual validation to check correctness of the split
-def verify_split(df, train_df, validation_df, test_df, split_ratio, label_field_name):
+def verify_split(df,
+                 train_df,
+                 validation_df,
+                 test_df, split_ratio,
+                 label_field_name):
     num_duplicates_df = len(df[df[label_field_name] == 1])
     num_non_duplicates_df = len(df[df[label_field_name] == 0])
 
@@ -79,7 +90,8 @@ def verify_split(df, train_df, validation_df, test_df, split_ratio, label_field_
 # First is the folder, second is the train|validation|test file, and the last two are the csv files of the left and right datasets
 # Output file name is obtained from input_file_name and is put in the same folder as folder_path
 # This is not very efficient - partially to avoid storing large intermediate matrices
-def dataset_to_matrix(params, input_file_name):
+def dataset_to_matrix(params,
+                      input_file_name):
     ltable_df = pd.read_csv(os.path.join(params["dataset_folder_path"], params["ltable_file_name"]), encoding="utf-8")
     rtable_df = pd.read_csv(os.path.join(params["dataset_folder_path"], params["rtable_file_name"]), encoding="utf-8")
 
@@ -144,6 +156,7 @@ def compute_distance(fasttext_model, ltable_str, rtable_str):
         ltable_str = unicode(ltable_str)
     if isinstance(rtable_str, basestring) == False:
         rtable_str = unicode(rtable_str)
+    # FIXME change when passing to Python 3
     # if isinstance(ltable_str, str) == False:
     #     ltable_str = str(ltable_str)
     # if isinstance(rtable_str, str) == False:

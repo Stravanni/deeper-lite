@@ -3,6 +3,7 @@
 # Add local directory to path to allow imports when invoked directly or as part of Data Civilizer
 import os
 import sys
+
 sys.path.append(os.path.realpath(os.path.dirname(__file__)))
 
 import torch
@@ -33,8 +34,8 @@ RANDOM_STATE = 12345
 HIDDEN_X = 2
 MODEL_FILE_NAME = "best_validation_model_params.torch"
 
-def save_candset_compressed(params, candset_df, file_name):
 
+def save_candset_compressed(params, candset_df, file_name):
     output_file_name = params["dataset_folder_path"] + file_name
     candset_df.to_pickle(output_file_name, compression="gzip")
 
@@ -105,9 +106,6 @@ def train(params,
     return best_model_so_far
 
 
-
-
-
 def predict(params,
             predict_file_name,
             predict_output_file_name,
@@ -133,8 +131,6 @@ def predict(params,
     test_df = pd.read_csv(os.path.join(folder_path, predict_file_name), encoding="utf-8")
     test_df["gold"] = prediction_as_numpy
     test_df.to_csv(os.path.join(folder_path, predict_output_file_name), encoding="utf8", index=False)
-
-
 
 
 def compute_scores(predicted, actual):
@@ -312,27 +308,21 @@ def executeServicePredict(params={}):
 
 
 if __name__ == "__main__":
-    params = {
-        "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
-        "ltable_file_name": "dataset_a.csv",
-        "rtable_file_name": "dataset_b.csv",
-        "candidates_file": "predict.csv",
-        "labeled_file": "labeled_ids_only.csv",
-        "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/",
-        "lblocking_key": "movie_name",
-        "rblocking_key": "movie_name",
-        "lattributes": ['genre', 'actors', 'movie_name', 'directors', 'duration'],
-        "rattributes": ['genre', 'actors', 'movie_name', 'directors', 'duration']
-    }
-
     paramsTrain = {
         "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
         "ltable_file_name": "dataset_a.csv",
         "rtable_file_name": "dataset_b.csv",
-        "labeled_file": "labeled_ids_only.csv",
+        "labeled_file": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/labeled_ids_only.csv",
     }
 
     paramsPredict = {
+        # " file a
+        # " file b
+        # " path_metadata
+        # candidates_file
+        # lblocking_key
+        # rblocking_key
+        # path_out
         "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
         "ltable_file_name": "dataset_a.csv",
         "rtable_file_name": "dataset_b.csv",
