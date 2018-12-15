@@ -206,6 +206,7 @@ Optional:
 '''
 
 
+
 def executeServicePredict(params={}):
     #
     # This is a default blocking. (overlap blocking from Magellan, a.k.a. Standard Blocking)
@@ -216,7 +217,7 @@ def executeServicePredict(params={}):
     l_file_name = params["dataset_folder_path"] + params["ltable_file_name"]
     r_file_name = params["dataset_folder_path"] + params["rtable_file_name"]
 
-    generateCandidates = True if params["candidates_file"] is "" else False
+    generateCandidates = True  # if params["candidates_file"] is "" else False
 
     if generateCandidates:
         A = py_entitymatching.read_csv_metadata(l_file_name, key="id", encoding='utf-8')
@@ -227,9 +228,11 @@ def executeServicePredict(params={}):
         candset_df = ob.block_tables(A, B,
                                      params["lblocking_key"],
                                      params["rblocking_key"],
-                                     l_output_attrs=params["lattributes"],
-                                     r_output_attrs=params["rattributes"],
-                                     overlap_size=1,
+                                     #l_output_attrs=[params["rblocking_key"]],
+                                     # params["lattributes"],
+                                     #r_output_attrs=[params["rblocking_key"]],
+                                     # params["rattributes"],
+                                     overlap_size=3,
                                      show_progress=False)
 
         blocking_utils.save_candset_compressed(params, candset_df, "candset.pkl.compress")
@@ -343,9 +346,7 @@ if __name__ == "__main__":
         "dataset_folder_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/",
         "ltable_file_name": "dataset_a.csv",
         "rtable_file_name": "dataset_b.csv",
-        "labeled_file": "labeled_ids_only.csv",
-        "lblocking_key": "", # optional
-        "rblocking_key": "", # optional
+        "labeled_file": "labeled_ids_only.csv"
     }
 
     paramsPredict = {
@@ -353,6 +354,8 @@ if __name__ == "__main__":
         "ltable_file_name": "dataset_a.csv",
         "rtable_file_name": "dataset_b.csv",
         "candidates_file": "predict.csv",
+        "lblocking_key": "movie_name",  # optional
+        "rblocking_key": "movie_name",  # optional
         "out_file_path": "/Users/gio/Workspace/DC/deeper-lite-train-predict/deeper-lite/python/BenchmarkDatasets/movies/out2/"
     }
 
